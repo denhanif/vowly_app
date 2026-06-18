@@ -14,14 +14,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<Map<String, String>> onboardingData = [
     {
+      "image": "assets/slide1.png",
       "title": "Temukan Vendor Terbaik",
       "text": "Pilih dari ribuan vendor terpercaya untuk mewujudkan pernikahan impian Anda."
     },
     {
+      "image": "assets/slide2.png",
       "title": "Pesan dengan Mudah",
       "text": "Bandingkan harga, lihat portofolio, dan langsung pesan dalam satu aplikasi."
     },
     {
+      "image": "assets/slide3.png",
       "title": "Pantau Jadwal Acara",
       "text": "Atur semua kebutuhan dan pantau status pesanan tanpa perlu pusing."
     },
@@ -45,6 +48,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 },
                 itemCount: onboardingData.length,
                 itemBuilder: (context, index) => _buildPageContent(
+                  image: onboardingData[index]["image"]!,
                   title: onboardingData[index]["title"]!,
                   text: onboardingData[index]["text"]!,
                 ),
@@ -81,7 +85,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       },
                       child: Text(
                         _currentPage == onboardingData.length - 1 ? 'Mulai Sekarang' : 'Lanjut',
-                        style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -95,14 +99,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildPageContent({required String title, required String text}) {
+  Widget _buildPageContent({required String image, required String title, required String text}) {
     return Padding(
       padding: const EdgeInsets.all(40.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Spacer(),
-          Container(height: 200, width: 200, decoration: BoxDecoration(color: Colors.grey.shade200, shape: BoxShape.circle), child: const Icon(Icons.image, size: 80, color: Colors.grey)),
+          // Menampilkan gambar dari folder assets
+          Image.asset(
+            image,
+            height: 250,
+            fit: BoxFit.contain,
+          ),
           const Spacer(),
           Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 16),
