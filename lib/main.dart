@@ -46,7 +46,6 @@ class MyApp extends StatelessWidget {
         '/main': (context) => const MainScreen(), 
         '/vendor_main': (context) => const VendorMainScreen(), // <-- ROUTE BARU VENDOR
         '/categories': (context) => const CategoryScreen(),
-        '/vendor_detail': (context) => const VendorDetailScreen(), 
       },
     );
   }
