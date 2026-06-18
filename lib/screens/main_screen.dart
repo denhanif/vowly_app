@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import 'home_screen.dart';
-import 'favorite_screen.dart'; // Import layar baru
-import 'order_screen.dart';    // Import layar baru
-import 'profile_screen.dart';  // Import layar baru
-import 'chat_screen.dart';
+import 'order_screen.dart';
+import 'client_chat_screen.dart'; // <-- IMPORT HALAMAN CHAT KLIEN
+import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,44 +13,31 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
+  int _currentIndex = 0;
 
-  // Memasukkan halaman-halaman asli ke dalam daftar
-  final List<Widget> _pages = [
-        const HomeScreen(),
-        const ChatScreen(), // <-- Placeholder teks sudah diganti dengan ChatScreen asli
-        const FavoriteScreen(),
-        const OrderScreen(),
-        const ProfileScreen(),
-      ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const OrderScreen(),
+    const ClientChatScreen(), // Menggantikan halaman dummy chat sebelumnya
+    const ProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundWhite,
-      body: _pages[_selectedIndex], 
+      body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFFE56B8B), 
-        unselectedItemColor: Colors.black54,
-        showSelectedLabels: true,
+        selectedItemColor: AppColors.primaryPink,
+        unselectedItemColor: Colors.black38,
         showUnselectedLabels: true,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), activeIcon: Icon(Icons.favorite), label: 'Favorit'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
           BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), activeIcon: Icon(Icons.receipt_long), label: 'Pesanan'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Pesan'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
         ],
       ),

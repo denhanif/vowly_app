@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 30),
               _buildCategorySection(context),
               const SizedBox(height: 30),
-              _buildVendorSection(context), // Update Dinamis di sini
+              _buildVendorSection(context),
             ],
           ),
         ),
@@ -57,13 +57,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    // Jaring pengaman 1: Jika belum login, jangan query ke database
+    if (currentUser == null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: Text('Halo, Klien', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+          IconButton(icon: const Icon(Icons.notifications_none, color: AppColors.primaryPink, size: 30), onPressed: () {}),
+        ],
+      );
+    }
+
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(currentUser?.uid).get(),
+      future: FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).get(),
       builder: (context, snapshot) {
         String userName = 'Klien';
+        
         if (snapshot.hasData && snapshot.data!.exists) {
-          userName = (snapshot.data!.data() as Map<String, dynamic>)['name'] ?? 'Klien';
+          // Jaring pengaman 2: Gunakan cast nullable (Map?) agar tidak crash jika dokumen kosong
+          var userData = snapshot.data!.data() as Map<String, dynamic>?;
+          if (userData != null) {
+            userName = userData['name'] ?? 'Klien';
+          }
         }
+        
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -167,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- MENGAMBIL DATA VENDOR DARI FIRESTORE ---
   Widget _buildVendorSection(BuildContext context) {
     return Column(
       children: [
@@ -192,25 +208,25 @@ class _HomeScreenState extends State<HomeScreen> {
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.1, crossAxisSpacing: 16, mainAxisSpacing: 16),
               itemCount: vendors.length,
               itemBuilder: (context, index) {
-                var vendorData = vendors[index].data() as Map<String, dynamic>;
+                // Jaring pengaman 3: Tambahkan ?? {} agar tidak crash jika dokumen vendor kosong
+                var vendorData = vendors[index].data() as Map<String, dynamic>? ?? {};
                 String vendorId = vendors[index].id;
 
                 return GestureDetector(
                   onTap: () { 
-                    // Mengirim ID dan Nama vendor ke halaman detail
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => VendorDetailScreen(vendorId: vendorId, vendorName: vendorData['name']))); 
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => VendorDetailScreen(vendorId: vendorId, vendorName: vendorData['name'] ?? 'Vendor'))); 
                   },
                   child: Container(
                     decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(12)),
                     child: Stack(
                       children: [
-                        Align(alignment: Alignment.bottomCenter, child: Container(height: 60, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withValues(alpha : 0.8), Colors.transparent])))),
+                        Align(alignment: Alignment.bottomCenter, child: Container(height: 60, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.8), Colors.transparent])))),
                         Padding(
                           padding: const EdgeInsets.all(10.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), decoration: BoxDecoration(color: Colors.white.withValues(alpha : 0.9), borderRadius: BorderRadius.circular(4)), child: const Text('Event Organizer', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFFE56B8B)))),
+                              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(4)), child: const Text('Event Organizer', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFFE56B8B)))),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

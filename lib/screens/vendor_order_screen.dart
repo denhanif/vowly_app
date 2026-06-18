@@ -1,21 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../utils/colors.dart';
 
-class VendorOrderScreen extends StatelessWidget {
+class VendorOrderScreen extends StatefulWidget {
   const VendorOrderScreen({super.key});
 
-  void _updateOrderStatus(String orderId, String newStatus, BuildContext context) {
-    FirebaseFirestore.instance.collection('orders').doc(orderId).update({'status': newStatus}).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pesanan $newStatus!'), backgroundColor: newStatus == 'Ditolak' ? Colors.red : Colors.green));
-    });
+  @override
+  State<VendorOrderScreen> createState() => _VendorOrderScreenState();
+}
+
+class _VendorOrderScreenState extends State<VendorOrderScreen> {
+  final User? currentUser = FirebaseAuth.instance.currentUser;
+  final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
+  // Fungsi untuk mengubah status pesanan di Firestore
+  Future<void> _updateOrderStatus(String orderId, String newStatus) async {
+    try {
+      await FirebaseFirestore.instance.collection('orders').doc(orderId).update({
+        'status': newStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pesanan $newStatus!'), backgroundColor: newStatus == 'Ditolak' ? Colors.red : Colors.green));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal memperbarui status'), backgroundColor: Colors.red));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -23,92 +39,142 @@ class VendorOrderScreen extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: AppColors.backgroundWhite,
           elevation: 0,
-          title: const Text('Kelola Pesanan', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          title: const Text('Manajemen Pesanan', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           bottom: const TabBar(
-            labelColor: Color(0xFFE56B8B),
+            labelColor: AppColors.primaryPink,
             unselectedLabelColor: Colors.black54,
-            indicatorColor: Color(0xFFE56B8B),
-            tabs: [Tab(text: 'Baru'), Tab(text: 'Diproses'), Tab(text: 'Selesai')],
+            indicatorColor: AppColors.primaryPink,
+            tabs: [
+              Tab(text: 'Pesanan Baru'),
+              Tab(text: 'Diproses'),
+              Tab(text: 'Riwayat'),
+            ],
           ),
         ),
-        body: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('orders').where('vendorId', isEqualTo: currentUserId).snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: AppColors.primaryPink));
-            
-            List<QueryDocumentSnapshot> allOrders = snapshot.hasData ? snapshot.data!.docs : [];
-            
-            // Memisahkan pesanan berdasarkan status
-            List<QueryDocumentSnapshot> newOrders = allOrders.where((doc) => doc['status'] == 'Menunggu').toList();
-            List<QueryDocumentSnapshot> processOrders = allOrders.where((doc) => doc['status'] == 'Diproses').toList();
-            List<QueryDocumentSnapshot> completedOrders = allOrders.where((doc) => doc['status'] == 'Selesai').toList();
-
-            return TabBarView(
-              children: [
-                _buildOrderList(newOrders, true, context), // Tab Baru (Bisa Terima/Tolak)
-                _buildOrderList(processOrders, false, context), // Tab Diproses
-                _buildOrderList(completedOrders, false, context), // Tab Selesai
-              ],
-            );
-          },
+        body: TabBarView(
+          children: [
+            _buildOrderList(['Menunggu']), // Tab 1: Pesanan Baru
+            _buildOrderList(['Diproses']), // Tab 2: Sedang Dikerjakan
+            _buildOrderList(['Selesai', 'Ditolak']), // Tab 3: Selesai / Batal
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildOrderList(List<QueryDocumentSnapshot> orders, bool showActions, BuildContext context) {
-    if (orders.isEmpty) {
-      return const Center(child: Text('Belum ada pesanan di kategori ini.', style: TextStyle(color: Colors.black54)));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        var order = orders[index].data() as Map<String, dynamic>;
-        String docId = orders[index].id;
+  Widget _buildOrderList(List<String> statusFilter) {
+    if (currentUser == null) return const Center(child: Text('Silakan login'));
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return StreamBuilder<QuerySnapshot>(
+      // Mengambil pesanan yang vendorId-nya sama dengan akun ini, dan statusnya sesuai tab
+      stream: FirebaseFirestore.instance
+          .collection('orders')
+          .where('vendorId', isEqualTo: currentUser!.uid)
+          .where('status', whereIn: statusFilter)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: AppColors.primaryPink));
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return Center(child: Text('Tidak ada pesanan di kategori ini.', style: TextStyle(color: Colors.grey.shade600)));
+
+        var orders = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: orders.length,
+          itemBuilder: (context, index) {
+            var order = orders[index].data() as Map<String, dynamic>;
+            String orderId = orders[index].id;
+            String status = order['status'] ?? 'Menunggu';
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('ID: ${docId.substring(0, 8).toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
-                    Text('Rp ${order['totalPrice'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE56B8B))),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(child: Text(order['packageName'] ?? 'Paket Layanan', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: _getStatusColor(status).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                          child: Text(status, style: TextStyle(color: _getStatusColor(status), fontSize: 12, fontWeight: FontWeight.bold)),
+                        )
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    _buildDetailRow(Icons.person_outline, 'Klien', order['customerName'] ?? 'Klien Vowly'),
+                    _buildDetailRow(Icons.calendar_today, 'Tanggal Acara', order['eventDate'] ?? '-'),
+                    _buildDetailRow(Icons.payments_outlined, 'Pendapatan', currencyFormat.format(order['totalPrice'] ?? 0)),
+                    if (order['notes'] != null && order['notes'].toString().isNotEmpty)
+                      _buildDetailRow(Icons.notes, 'Catatan', order['notes']),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // --- TOMBOL AKSI BERDASARKAN STATUS ---
+                    if (status == 'Menunggu')
+                      Row(
+                        children: [
+                          Expanded(child: OutlinedButton(onPressed: () => _updateOrderStatus(orderId, 'Ditolak'), style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)), child: const Text('Tolak'))),
+                          const SizedBox(width: 12),
+                          Expanded(child: ElevatedButton(onPressed: () => _updateOrderStatus(orderId, 'Diproses'), style: ElevatedButton.styleFrom(backgroundColor: Colors.blue), child: const Text('Terima', style: TextStyle(color: Colors.white)))),
+                        ],
+                      ),
+                      
+                    if (status == 'Diproses')
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => _updateOrderStatus(orderId, 'Selesai'),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                          child: const Text('Selesaikan Pesanan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
                   ],
                 ),
-                const Divider(height: 24),
-                Text(order['packageName'] ?? 'Paket', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text('Klien: ${order['customerName'] ?? 'Anonim'}\nTanggal: ${order['eventDate'] ?? '-'}', style: const TextStyle(color: Colors.black87, height: 1.5)),
-                
-                if (showActions) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(child: OutlinedButton(onPressed: () => _updateOrderStatus(docId, 'Ditolak', context), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)), child: const Text('Tolak', style: TextStyle(color: Colors.red)))),
-                      const SizedBox(width: 12),
-                      Expanded(child: ElevatedButton(onPressed: () => _updateOrderStatus(docId, 'Diproses', context), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text('Terima', style: TextStyle(color: Colors.white)))),
-                    ],
-                  )
-                ] else ...[
-                   const SizedBox(height: 16),
-                   Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                     decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(20)),
-                     child: Text('Status: ${order['status']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                   )
-                ]
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: Colors.black54),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 13, color: Colors.black87),
+                children: [
+                  TextSpan(text: '$label: ', style: const TextStyle(color: Colors.black54)),
+                  TextSpan(text: value, style: const TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Menunggu': return Colors.orange;
+      case 'Diproses': return Colors.blue;
+      case 'Selesai': return Colors.green;
+      case 'Ditolak': return Colors.red;
+      default: return Colors.grey;
+    }
   }
 }

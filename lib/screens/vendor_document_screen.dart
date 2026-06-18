@@ -1,8 +1,30 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 
-class VendorDocumentScreen extends StatelessWidget {
+class VendorDocumentScreen extends StatefulWidget {
   const VendorDocumentScreen({super.key});
+
+  @override
+  State<VendorDocumentScreen> createState() => _VendorDocumentScreenState();
+}
+
+class _VendorDocumentScreenState extends State<VendorDocumentScreen> {
+  // Status simulasi upload
+  bool isNibUploaded = false;
+  bool isPortoUploaded = false;
+
+  void _simulateUpload(String type) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sedang mengunggah file...')));
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          if (type == 'NIB') isNibUploaded = true;
+          if (type == 'PORTO') isPortoUploaded = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dokumen berhasil diunggah!'), backgroundColor: Colors.green));
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +62,16 @@ class VendorDocumentScreen extends StatelessWidget {
             const SizedBox(height: 8),
             const Text('NIB / SIUP / TDP', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
             const SizedBox(height: 8),
-            _buildUploadButton('Upload Dokumen Izin Usaha', 'NIB dari OSS, SIUP, atau TDP'),
+            isNibUploaded 
+              ? _buildUploadedFileCard('', 'izin_usaha_nib.pdf', '2.1 MB')
+              : _buildUploadButton('Upload Dokumen Izin Usaha', 'NIB dari OSS, SIUP, atau TDP', () => _simulateUpload('NIB')),
             
             const SizedBox(height: 20),
             const Text('FOTO PORTOFOLIO (OPSIONAL)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
             const SizedBox(height: 8),
-            _buildUploadButton('Upload Portofolio', 'Maks. 10 foto, JPG/PNG, tampilkan karya terbaik'),
+            isPortoUploaded 
+              ? _buildUploadedFileCard('', 'portofolio_lengkap.zip', '4.5 MB')
+              : _buildUploadButton('Upload Portofolio', 'Maks. 10 foto, JPG/PNG, tampilkan karya terbaik', () => _simulateUpload('PORTO')),
           ],
         ),
       ),
@@ -54,12 +80,14 @@ class VendorDocumentScreen extends StatelessWidget {
 
   Widget _buildUploadedFileCard(String label, String fileName, String fileSize) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: EdgeInsets.only(bottom: label.isEmpty ? 0 : 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
-          const SizedBox(height: 8),
+          if (label.isNotEmpty) ...[
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
+            const SizedBox(height: 8),
+          ],
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.green.shade200)),
@@ -85,19 +113,22 @@ class VendorDocumentScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUploadButton(String title, String subtitle) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(color: const Color(0xFFFDE8EE), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primaryPink, style: BorderStyle.solid, width: 1)),
-      child: Column(
-        children: [
-          const Icon(Icons.upload_file, color: AppColors.primaryPink),
-          const SizedBox(height: 8),
-          Text(title, style: const TextStyle(color: AppColors.primaryPink, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-        ],
+  Widget _buildUploadButton(String title, String subtitle, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(color: const Color(0xFFFDE8EE), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primaryPink, style: BorderStyle.solid, width: 1)),
+        child: Column(
+          children: [
+            const Icon(Icons.upload_file, color: AppColors.primaryPink),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(color: AppColors.primaryPink, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }

@@ -6,8 +6,9 @@ import '../utils/colors.dart';
 import 'edit_profile_screen.dart';
 import 'help_center_screen.dart'; 
 import 'vendor_bank_account_screen.dart';
-import 'vendor_agreement_screen.dart'; // <-- IMPORT BARU
-import 'vendor_document_screen.dart';  // <-- IMPORT BARU
+import 'vendor_agreement_screen.dart'; 
+import 'vendor_document_screen.dart';  
+import 'notification_screen.dart'; // <-- IMPORT HALAMAN NOTIFIKASI DITAMBAHKAN DI SINI
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -162,7 +163,10 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 8),
                           _buildProfileMenu(Icons.description_outlined, 'Dokumen & Legalitas', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorDocumentScreen()))),
                           _buildProfileMenu(Icons.account_balance_outlined, 'Rekening Bank', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorBankAccountScreen()))),
-                          _buildProfileMenu(Icons.notifications_outlined, 'Notifikasi', () {}),
+                          
+                          // --- TOMBOL NOTIFIKASI SUDAH DIHUBUNGKAN ---
+                          _buildProfileMenu(Icons.notifications_outlined, 'Notifikasi', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationScreen()))),
+                          
                           _buildProfileMenu(Icons.handshake_outlined, 'Perjanjian Vendor', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorAgreementScreen()))),
                           _buildProfileMenu(Icons.help_outline, 'Pusat Bantuan', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpCenterScreen()))),
                           _buildProfileMenu(Icons.logout, 'Keluar', () async {
