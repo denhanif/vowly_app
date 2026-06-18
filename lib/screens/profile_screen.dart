@@ -9,6 +9,7 @@ import 'vendor_bank_account_screen.dart';
 import 'vendor_agreement_screen.dart'; 
 import 'vendor_document_screen.dart';  
 import 'notification_screen.dart'; 
+import 'vendor_package_screen.dart'; // <-- PENTING: Import Halaman Layanan
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -18,7 +19,6 @@ class ProfileScreen extends StatelessWidget {
     final User? currentUser = FirebaseAuth.instance.currentUser;
     final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
-    // Fungsi untuk mengubah angka jutaan menjadi format ringkas (misal: 85.000.000 -> 85jt)
     String formatPendapatanRingkas(int amount) {
       if (amount >= 1000000) {
         double inMillions = amount / 1000000;
@@ -59,17 +59,15 @@ class ProfileScreen extends StatelessWidget {
               
               String joinDate = createdAt != null ? DateFormat('MMM yyyy').format(createdAt.toDate()) : 'Baru';
 
-              // Jika Customer biasa, tampilkan profil lama yang simpel
               if (userRole != 'vendor') {
                 return _buildCustomerProfile(context, namaLengkap, currentUser.email ?? '');
               }
 
-              // JIKA VENDOR, TAMPILKAN PROFIL ADVANCED
               return SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- HEADER VENDOR (Dinamis) ---
+                    // --- HEADER VENDOR ---
                     Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Row(
@@ -108,7 +106,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     
-                    // --- STATISTIK (Dinamis dari koleksi Orders) ---
+                    // --- STATISTIK ---
                     StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance.collection('orders')
                           .where('vendorId', isEqualTo: currentUser.uid)
@@ -141,18 +139,33 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     Container(height: 8, color: Colors.grey.shade100),
 
-                    // --- PAKET LAYANAN PREVIEW (Dinamis) ---
+                    // --- PAKET LAYANAN PREVIEW ---
                     Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Paket Layanan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black54)),
-                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Paket Layanan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black54)),
+                              
+                              // ---> INI DIA TOMBOL KELOLA LAYANANNYA <---
+                              TextButton.icon(
+                                onPressed: () {
+                                  // Navigasi ke halaman VendorPackageScreen
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorPackageScreen()));
+                                }, 
+                                icon: const Icon(Icons.edit_note, color: AppColors.primaryPink, size: 18), 
+                                label: const Text('Kelola', style: TextStyle(color: AppColors.primaryPink, fontWeight: FontWeight.bold))
+                              )
+                            ],
+                          ),
+                          const SizedBox(height: 8),
                           StreamBuilder<QuerySnapshot>(
                             stream: FirebaseFirestore.instance.collection('packages').where('vendorId', isEqualTo: currentUser.uid).limit(2).snapshots(),
                             builder: (context, pkgSnapshot) {
-                              if (!pkgSnapshot.hasData || pkgSnapshot.data!.docs.isEmpty) return const Text('Belum ada paket.', style: TextStyle(color: Colors.black54));
+                              if (!pkgSnapshot.hasData || pkgSnapshot.data!.docs.isEmpty) return const Text('Belum ada paket. Silakan tambah.', style: TextStyle(color: Colors.black54));
                               return Column(
                                 children: pkgSnapshot.data!.docs.map((doc) {
                                   var pkg = doc.data() as Map<String, dynamic>;
