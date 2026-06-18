@@ -8,7 +8,7 @@ import 'help_center_screen.dart';
 import 'vendor_bank_account_screen.dart';
 import 'vendor_agreement_screen.dart'; 
 import 'vendor_document_screen.dart';  
-import 'notification_screen.dart'; // <-- IMPORT HALAMAN NOTIFIKASI DITAMBAHKAN DI SINI
+import 'notification_screen.dart'; 
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -17,6 +17,15 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final User? currentUser = FirebaseAuth.instance.currentUser;
     final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
+    // Fungsi untuk mengubah angka jutaan menjadi format ringkas (misal: 85.000.000 -> 85jt)
+    String formatPendapatanRingkas(int amount) {
+      if (amount >= 1000000) {
+        double inMillions = amount / 1000000;
+        return 'Rp ${inMillions.toStringAsFixed(inMillions.truncateToDouble() == inMillions ? 0 : 1)}jt';
+      }
+      return currencyFormat.format(amount);
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundWhite,
@@ -35,12 +44,16 @@ class ProfileScreen extends StatelessWidget {
               
               String namaLengkap = 'Vendor Vowly';
               String userRole = 'customer';
+              String kategori = 'Event Organizer';
+              String alamat = 'Alamat belum diatur';
               Timestamp? createdAt;
 
               if (snapshot.hasData && snapshot.data!.exists) {
                 Map<String, dynamic> userData = snapshot.data!.data() as Map<String, dynamic>;
                 namaLengkap = userData['name'] ?? namaLengkap;
                 userRole = userData['role'] ?? 'customer';
+                kategori = userData['category'] ?? kategori;
+                alamat = userData['address'] ?? alamat;
                 createdAt = userData['createdAt'] as Timestamp?;
               }
               
@@ -56,7 +69,7 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- HEADER VENDOR ---
+                    // --- HEADER VENDOR (Dinamis) ---
                     Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Row(
@@ -73,7 +86,7 @@ class ProfileScreen extends StatelessWidget {
                               children: [
                                 Text(namaLengkap, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
-                                const Text('Event Organizer · Jl. Merdeka No. 45', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                                Text('$kategori · $alamat', style: const TextStyle(color: Colors.black54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: const [
@@ -95,21 +108,40 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     
-                    // --- STATISTIK ---
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildStatColumn('63', 'Pesanan Selesai'),
-                          _buildStatColumn('Rp 85jt', 'Total Pendapatan'), // Harusnya dinamis, di-mock untuk UI
-                          _buildStatColumn(joinDate, 'Bergabung'),
-                        ],
-                      ),
+                    // --- STATISTIK (Dinamis dari koleksi Orders) ---
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance.collection('orders')
+                          .where('vendorId', isEqualTo: currentUser.uid)
+                          .where('status', isEqualTo: 'Selesai')
+                          .snapshots(),
+                      builder: (context, orderSnapshot) {
+                        int pesananSelesai = 0;
+                        int totalPendapatan = 0;
+
+                        if (orderSnapshot.hasData) {
+                          pesananSelesai = orderSnapshot.data!.docs.length;
+                          for (var doc in orderSnapshot.data!.docs) {
+                            var orderData = doc.data() as Map<String, dynamic>;
+                            totalPendapatan += (orderData['totalPrice'] ?? 0) as int;
+                          }
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildStatColumn(pesananSelesai.toString(), 'Pesanan Selesai'),
+                              _buildStatColumn(formatPendapatanRingkas(totalPendapatan), 'Total Pendapatan'),
+                              _buildStatColumn(joinDate, 'Bergabung'),
+                            ],
+                          ),
+                        );
+                      }
                     ),
                     Container(height: 8, color: Colors.grey.shade100),
 
-                    // --- PAKET LAYANAN PREVIEW ---
+                    // --- PAKET LAYANAN PREVIEW (Dinamis) ---
                     Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
@@ -163,10 +195,7 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 8),
                           _buildProfileMenu(Icons.description_outlined, 'Dokumen & Legalitas', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorDocumentScreen()))),
                           _buildProfileMenu(Icons.account_balance_outlined, 'Rekening Bank', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorBankAccountScreen()))),
-                          
-                          // --- TOMBOL NOTIFIKASI SUDAH DIHUBUNGKAN ---
                           _buildProfileMenu(Icons.notifications_outlined, 'Notifikasi', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationScreen()))),
-                          
                           _buildProfileMenu(Icons.handshake_outlined, 'Perjanjian Vendor', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorAgreementScreen()))),
                           _buildProfileMenu(Icons.help_outline, 'Pusat Bantuan', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpCenterScreen()))),
                           _buildProfileMenu(Icons.logout, 'Keluar', () async {
