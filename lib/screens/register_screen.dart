@@ -52,10 +52,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Terjadi kesalahan saat mendaftar.';
-      if (e.code == 'weak-password') errorMessage = 'Kata sandi terlalu lemah.';
-      else if (e.code == 'email-already-in-use') errorMessage = 'Email ini sudah terdaftar.';
-      else if (e.code == 'invalid-email') errorMessage = 'Format email tidak valid.';
-      
+      if (e.code == 'weak-password') {
+        errorMessage = 'Kata sandi terlalu lemah.';
+      } else if (e.code == 'email-already-in-use') {
+        errorMessage = 'Email ini sudah terdaftar.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'Format email tidak valid.';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() { _isLoading = false; });

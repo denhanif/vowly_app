@@ -103,7 +103,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE56B8B), width: 2),
           boxShadow: [
-            BoxShadow(color: const Color(0xFFE56B8B).withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5)),
+            BoxShadow(color: const Color(0xFFE56B8B).withValues(alpha : 0.1), blurRadius: 10, offset: const Offset(0, 5)),
           ],
         ),
         child: Column(

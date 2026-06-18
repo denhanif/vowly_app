@@ -53,9 +53,13 @@ class OrderScreen extends StatelessWidget {
                     
                     // Menentukan warna badge status
                     Color statusColor = Colors.orange;
-                    if (status == 'Diproses') statusColor = Colors.blue;
-                    else if (status == 'Selesai') statusColor = Colors.green;
-                    else if (status == 'Ditolak') statusColor = Colors.red;
+                    if (status == 'Diproses') {
+                      statusColor = Colors.blue;
+                    } else if (status == 'Selesai') 
+                    {statusColor = Colors.green;
+                    } else if (status == 'Ditolak') {
+                      statusColor = Colors.red;
+                    }
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -72,7 +76,7 @@ class OrderScreen extends StatelessWidget {
                                 Text(order['vendorName'] ?? 'Vendor Vowly', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                                  decoration: BoxDecoration(color: statusColor.withValues(alpha : 0.1), borderRadius: BorderRadius.circular(20)),
                                   child: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
                                 )
                               ],

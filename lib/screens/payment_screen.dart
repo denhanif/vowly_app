@@ -70,7 +70,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       onTap: () => setState(() => _selectedPayment = index),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: isSelected ? AppColors.primaryPink.withOpacity(0.1) : Colors.white, border: Border.all(color: isSelected ? const Color(0xFFE56B8B) : Colors.grey.shade300, width: isSelected ? 2 : 1), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: isSelected ? AppColors.primaryPink.withValues(alpha :0.1) : Colors.white, border: Border.all(color: isSelected ? const Color(0xFFE56B8B) : Colors.grey.shade300, width: isSelected ? 2 : 1), borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
             Icon(icon, color: isSelected ? const Color(0xFFE56B8B) : Colors.black54),

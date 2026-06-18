@@ -49,11 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Terjadi kesalahan saat masuk.';
       if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') errorMessage = 'Email atau Kata Sandi salah.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage), backgroundColor: Colors.red));
-    } finally {
-      if (mounted) setState(() { _isLoading = false; });
-    }
-  }
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(errorMessage),
+        backgroundColor: Colors.red,
+      ),
+    );                                                                         
+        } finally {
+          if (mounted) setState(() { _isLoading = false; });
+        }
+      }
 
   // ... (Kode _build dan lain-lain di bawah ini biarkan sama persis seperti kode login Anda sebelumnya)
   @override

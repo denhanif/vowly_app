@@ -22,7 +22,7 @@ class NotificationScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           return ListTile(
             leading: CircleAvatar(
-              backgroundColor: AppColors.primaryPink.withOpacity(0.2),
+              backgroundColor: AppColors.primaryPink.withValues(alpha :0.2),
               child: const Icon(Icons.notifications, color: Color(0xFFE56B8B)),
             ),
             title: const Text('Promo Spesial Hari Ini!', style: TextStyle(fontWeight: FontWeight.bold)),

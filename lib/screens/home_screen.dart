@@ -204,13 +204,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(12)),
                     child: Stack(
                       children: [
-                        Align(alignment: Alignment.bottomCenter, child: Container(height: 60, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.8), Colors.transparent])))),
+                        Align(alignment: Alignment.bottomCenter, child: Container(height: 60, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withValues(alpha : 0.8), Colors.transparent])))),
                         Padding(
                           padding: const EdgeInsets.all(10.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(4)), child: const Text('Event Organizer', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFFE56B8B)))),
+                              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), decoration: BoxDecoration(color: Colors.white.withValues(alpha : 0.9), borderRadius: BorderRadius.circular(4)), child: const Text('Event Organizer', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFFE56B8B)))),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

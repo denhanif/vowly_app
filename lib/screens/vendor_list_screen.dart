@@ -35,7 +35,7 @@ class VendorListScreen extends StatelessWidget {
                 children: [
                   Align(
                     alignment: Alignment.bottomCenter,
-                    child: Container(height: 60, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.8), Colors.transparent]))),
+                    child: Container(height: 60, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withValues(alpha : 0.8), Colors.transparent]))),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
