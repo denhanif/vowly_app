@@ -1,19 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../utils/colors.dart';
-import 'payment_success_screen.dart';
+import 'payment_success_screen.dart'; // Pastikan file ini ada (kodenya di bawah)
 
 class PaymentScreen extends StatefulWidget {
-  final int totalPrice; // Menerima harga asli
+  // Menerima data dari halaman Booking sebelumnya
+  final String vendorId;
+  final String packageId;
+  final String packageName;
+  final int totalPrice;
+  final String eventDate;
 
-  const PaymentScreen({super.key, required this.totalPrice});
+  const PaymentScreen({
+    super.key,
+    required this.vendorId,
+    required this.packageId,
+    required this.packageName,
+    required this.totalPrice,
+    required this.eventDate,
+  });
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  int _selectedPayment = 0; 
+  String _selectedMethod = 'Transfer Bank (Virtual Account)';
+  bool _isProcessing = false;
+
+  final List<Map<String, dynamic>> _paymentMethods = [
+    {'icon': Icons.account_balance, 'label': 'Transfer Bank (Virtual Account)'},
+    {'icon': Icons.account_balance_wallet, 'label': 'E-Wallet (Gopay, OVO, Dana)'},
+    {'icon': Icons.credit_card, 'label': 'Kartu Kredit / Debit'},
+  ];
+
+  Future<void> _processPayment() async {
+    setState(() {
+      _isProcessing = true; // Menampilkan efek loading berputar di tombol
+    });
+
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) throw Exception("User belum login");
+
+      // 1. Ambil nama klien yang sedang login
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+      String customerName = (userDoc.data() as Map<String, dynamic>?)?['name'] ?? 'Klien Vowly';
+
+      // 2. Simulasi loading menghubungi pihak Bank (Tunggu 3 detik)
+      await Future.delayed(const Duration(seconds: 3));
+
+      // 3. Masukkan pesanan ke database Firestore agar terbaca oleh Vendor
+      await FirebaseFirestore.instance.collection('orders').add({
+        'vendorId': widget.vendorId,
+        'customerId': currentUser.uid,
+        'customerName': customerName,
+        'packageId': widget.packageId,
+        'packageName': widget.packageName,
+        'totalPrice': widget.totalPrice,
+        'eventDate': widget.eventDate,
+        'paymentMethod': _selectedMethod,
+        'status': 'Menunggu', // Status awal agar vendor bisa menerima/menolak
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 4. Jika berhasil, pindah ke layar Sukses
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PaymentSuccessScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran gagal: $e'), backgroundColor: Colors.red));
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,61 +89,89 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundWhite,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundWhite, elevation: 0,
+        backgroundColor: AppColors.backgroundWhite,
+        elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
         title: const Text('Pembayaran', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- KARTU TOTAL PEMBAYARAN ---
             Container(
-              width: double.infinity, padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: const Color(0xFFFDE8EE), borderRadius: BorderRadius.circular(12)),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 30),
+              decoration: BoxDecoration(color: const Color(0xFFFDE8EE), borderRadius: BorderRadius.circular(16)),
               child: Column(
                 children: [
                   const Text('Total Pembayaran', style: TextStyle(color: Colors.black54, fontSize: 14)),
                   const SizedBox(height: 8),
-                  Text(currencyFormat.format(widget.totalPrice), style: const TextStyle(color: Color(0xFFE56B8B), fontSize: 28, fontWeight: FontWeight.bold)),
+                  Text(
+                    currencyFormat.format(widget.totalPrice),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.primaryPink),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 30),
-            const Text('Pilih Metode Pembayaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 16),
-            _buildPaymentOption(0, Icons.account_balance, 'Transfer Bank (Virtual Account)'),
-            _buildPaymentOption(1, Icons.account_balance_wallet, 'E-Wallet (Gopay, OVO, Dana)'),
-            _buildPaymentOption(2, Icons.credit_card, 'Kartu Kredit / Debit'),
-          ],
-        ),
-      ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(20), color: Colors.white,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE56B8B), padding: const EdgeInsets.symmetric(vertical: 16), minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-          onPressed: () {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PaymentSuccessScreen()));
-          },
-          child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildPaymentOption(int index, IconData icon, String title) {
-    bool isSelected = _selectedPayment == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedPayment = index),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: isSelected ? AppColors.primaryPink.withValues(alpha :0.1) : Colors.white, border: Border.all(color: isSelected ? const Color(0xFFE56B8B) : Colors.grey.shade300, width: isSelected ? 2 : 1), borderRadius: BorderRadius.circular(12)),
-        child: Row(
-          children: [
-            Icon(icon, color: isSelected ? const Color(0xFFE56B8B) : Colors.black54),
-            const SizedBox(width: 16),
-            Expanded(child: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal))),
-            if (isSelected) const Icon(Icons.check_circle, color: Color(0xFFE56B8B)),
+            const Text('Pilih Metode Pembayaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+
+            // --- PILIHAN METODE PEMBAYARAN INTERAKTIF ---
+            Expanded(
+              child: ListView.builder(
+                itemCount: _paymentMethods.length,
+                itemBuilder: (context, index) {
+                  final method = _paymentMethods[index];
+                  final isSelected = _selectedMethod == method['label'];
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedMethod = method['label']; // Mengubah status saat diklik
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: isSelected ? AppColors.primaryPink : Colors.grey.shade300, width: isSelected ? 2 : 1),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(method['icon'], color: isSelected ? AppColors.primaryPink : Colors.grey.shade600),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              method['label'],
+                              style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: Colors.black87),
+                            ),
+                          ),
+                          if (isSelected) const Icon(Icons.check_circle, color: AppColors.primaryPink),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // --- TOMBOL BAYAR SEKARANG DENGAN EFEK LOADING ---
+            SizedBox(
+              width: double.infinity, height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                onPressed: _isProcessing ? null : _processPayment, // Nonaktifkan tombol saat loading
+                child: _isProcessing
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
           ],
         ),
       ),

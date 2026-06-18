@@ -12,11 +12,16 @@ import 'screens/vendor_main_screen.dart'; // <-- IMPORT FILE BARU VENDOR
 import 'screens/category_screen.dart';
 import 'screens/vendor_detail_screen.dart'; 
 import 'utils/colors.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  
+  // ---> TAMBAHKAN BARIS INI UNTUK MENYALAKAN FORMAT TANGGAL INDONESIA <---
+  await initializeDateFormatting('id_ID', null); 
+
+  runApp(const MyApp()); // (Atau nama class utama Anda)
 }
 
 class MyApp extends StatelessWidget {

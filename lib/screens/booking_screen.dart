@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../utils/colors.dart';
-import 'payment_screen.dart';
+import 'payment_screen.dart'; // <-- Import halaman pembayaran
 
 class BookingScreen extends StatefulWidget {
   final String vendorId;
@@ -11,130 +9,164 @@ class BookingScreen extends StatefulWidget {
   final String packageId;
   final Map<String, dynamic> packageData;
 
-  const BookingScreen({super.key, required this.vendorId, required this.vendorName, required this.packageId, required this.packageData});
+  const BookingScreen({
+    super.key,
+    required this.vendorId,
+    required this.vendorName,
+    required this.packageId,
+    required this.packageData,
+  });
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  final TextEditingController _dateController = TextEditingController();
+  DateTime? selectedDate;
   final TextEditingController _notesController = TextEditingController();
-  bool _isLoading = false;
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 7)),
-      firstDate: DateTime.now(),
+      initialDate: DateTime.now().add(const Duration(days: 7)), // Default minggu depan
+      firstDate: DateTime.now().add(const Duration(days: 1)),
       lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryPink,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
-    if (picked != null) {
+    if (picked != null && picked != selectedDate) {
       setState(() {
-        _dateController.text = DateFormat('dd MMMM yyyy').format(picked);
+        selectedDate = picked;
       });
     }
   }
 
-  Future<void> _createOrder() async {
-    if (_dateController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih tanggal acara terlebih dahulu!'), backgroundColor: Colors.red));
-      return;
-    }
-
-    setState(() { _isLoading = true; });
-    User? currentUser = FirebaseAuth.instance.currentUser;
-
-    try {
-      // Ambil nama klien
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).get();
-      String customerName = (userDoc.data() as Map<String, dynamic>)['name'] ?? 'Klien Vowly';
-
-      // Simpan ke collection orders
-      await FirebaseFirestore.instance.collection('orders').add({
-        'customerId': currentUser.uid,
-        'customerName': customerName,
-        'vendorId': widget.vendorId,
-        'packageId': widget.packageId,
-        'packageName': widget.packageData['name'],
-        'totalPrice': widget.packageData['price'],
-        'eventDate': _dateController.text,
-        'notes': _notesController.text.trim(),
-        'status': 'Menunggu', // Status awal
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      if (mounted) {
-        // Pindah ke layar pembayaran
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => PaymentScreen(totalPrice: widget.packageData['price'])));
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal membuat pesanan'), backgroundColor: Colors.red));
-    } finally {
-      if (mounted) setState(() { _isLoading = false; });
-    }
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    int price = widget.packageData['price'] ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundWhite,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundWhite, elevation: 0,
+        backgroundColor: AppColors.backgroundWhite,
+        elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
-        title: const Text('Buat Pesanan', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('Detail Pesanan', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- INFO VENDOR & PAKET ---
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(width: 60, height: 60, color: Colors.grey.shade300, child: const Icon(Icons.store, color: Colors.white)),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.vendorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        const SizedBox(height: 4),
-                        Text(widget.packageData['name'], style: const TextStyle(color: Color(0xFFE56B8B), fontWeight: FontWeight.w500)),
-                        Text(currencyFormat.format(widget.packageData['price']), style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  )
+                  Row(
+                    children: [
+                      const Icon(Icons.store, color: AppColors.primaryPink),
+                      const SizedBox(width: 8),
+                      Text(widget.vendorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  Text(widget.packageData['name'] ?? 'Paket', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 8),
+                  Text(widget.packageData['description'] ?? '', style: const TextStyle(color: Colors.black54, height: 1.5)),
+                  const SizedBox(height: 16),
+                  Text(currencyFormat.format(price), style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryPink, fontSize: 16)),
                 ],
               ),
             ),
-            const SizedBox(height: 30),
-            const Text('Tanggal Acara', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+
+            // --- PILIH TANGGAL ACARA ---
+            const Text('Tanggal Acara *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
-            TextField(
-              controller: _dateController, readOnly: true, onTap: () => _selectDate(context),
-              decoration: InputDecoration(hintText: 'Pilih Tanggal', suffixIcon: const Icon(Icons.calendar_today, color: Colors.black54), filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
+            InkWell(
+              onTap: () => _selectDate(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(selectedDate == null ? 'Pilih tanggal acara' : DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate!), style: TextStyle(color: selectedDate == null ? Colors.black38 : Colors.black87, fontSize: 16)),
+                    const Icon(Icons.calendar_today, color: AppColors.primaryPink, size: 20),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            const Text('Catatan Tambahan', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+
+            // --- CATATAN ---
+            const Text('Catatan untuk Vendor (Opsional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
             TextField(
-              controller: _notesController, maxLines: 4,
-              decoration: InputDecoration(hintText: 'Tuliskan request khusus...', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
+              controller: _notesController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Misal: Tema warna pastel, acara mulai jam 09:00 pagi...',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primaryPink)),
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            // --- TOMBOL LANJUT PEMBAYARAN ---
+            SizedBox(
+              width: double.infinity, height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                onPressed: () {
+                  // Validasi: Cegah lanjut jika tanggal belum dipilih
+                  if (selectedDate == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Silakan pilih tanggal acara terlebih dahulu!'), backgroundColor: Colors.red));
+                    return;
+                  }
+
+                  // ---> INI BAGIAN YANG MEMPERBAIKI ERROR ANDA <---
+                  // Mengirimkan semua data yang diminta oleh PaymentScreen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PaymentScreen(
+                        vendorId: widget.vendorId,
+                        packageId: widget.packageId,
+                        packageName: widget.packageData['name'] ?? 'Paket',
+                        totalPrice: price,
+                        eventDate: DateFormat('yyyy-MM-dd').format(selectedDate!),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Lanjut ke Pembayaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
             ),
           ],
-        ),
-      ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(20), color: Colors.white,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE56B8B), padding: const EdgeInsets.symmetric(vertical: 16), minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-          onPressed: _isLoading ? null : _createOrder,
-          child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Lanjut Pembayaran', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ),
     );

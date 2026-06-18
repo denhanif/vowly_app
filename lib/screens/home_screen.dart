@@ -7,6 +7,7 @@ import 'search_screen.dart';
 import 'vendor_list_screen.dart'; 
 import 'category_detail_screen.dart'; 
 import 'vendor_detail_screen.dart';
+import 'category_list_screen.dart'; // Import khusus untuk Daftar Kategori
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -57,12 +58,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    // Jaring pengaman 1: Jika belum login, jangan query ke database
     if (currentUser == null) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(child: Text('Halo, Klien', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+          const Expanded(child: Text('Halo, Klien', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
           IconButton(icon: const Icon(Icons.notifications_none, color: AppColors.primaryPink, size: 30), onPressed: () {}),
         ],
       );
@@ -74,7 +74,6 @@ class _HomeScreenState extends State<HomeScreen> {
         String userName = 'Klien';
         
         if (snapshot.hasData && snapshot.data!.exists) {
-          // Jaring pengaman 2: Gunakan cast nullable (Map?) agar tidak crash jika dokumen kosong
           var userData = snapshot.data!.data() as Map<String, dynamic>?;
           if (userData != null) {
             userName = userData['name'] ?? 'Klien';
@@ -159,7 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Kategori', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            TextButton(onPressed: () => Navigator.pushNamed(context, '/categories'), child: const Text('Lihat Semua', style: TextStyle(color: Color(0xFFE56B8B), fontWeight: FontWeight.bold))),
+            TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CategoryListScreen())), 
+              child: const Text('Lihat Semua', style: TextStyle(color: Color(0xFFE56B8B), fontWeight: FontWeight.bold))
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -208,16 +210,26 @@ class _HomeScreenState extends State<HomeScreen> {
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.1, crossAxisSpacing: 16, mainAxisSpacing: 16),
               itemCount: vendors.length,
               itemBuilder: (context, index) {
-                // Jaring pengaman 3: Tambahkan ?? {} agar tidak crash jika dokumen vendor kosong
                 var vendorData = vendors[index].data() as Map<String, dynamic>? ?? {};
                 String vendorId = vendors[index].id;
+                
+                // --- PENAMBAHAN LOGIKA GAMBAR & KATEGORI ---
+                String imageUrl = vendorData['imageUrl'] ?? 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=500&auto=format&fit=crop';
+                String category = vendorData['category'] ?? 'Event Organizer';
 
                 return GestureDetector(
                   onTap: () { 
                     Navigator.push(context, MaterialPageRoute(builder: (context) => VendorDetailScreen(vendorId: vendorId, vendorName: vendorData['name'] ?? 'Vendor'))); 
                   },
                   child: Container(
-                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300, 
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: NetworkImage(imageUrl),
+                        fit: BoxFit.cover, // Memastikan gambar menutupi kotak secara proporsional
+                      ),
+                    ),
                     child: Stack(
                       children: [
                         Align(alignment: Alignment.bottomCenter, child: Container(height: 60, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.8), Colors.transparent])))),
@@ -226,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(4)), child: const Text('Event Organizer', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFFE56B8B)))),
+                              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(4)), child: Text(category, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: const Color(0xFFE56B8B)))),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
