@@ -3,13 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../utils/colors.dart';
-import 'edit_profile_screen.dart';
+import 'edit_profile_screen.dart'; // <-- Pastikan ini ada
 import 'help_center_screen.dart'; 
 import 'vendor_bank_account_screen.dart';
 import 'vendor_agreement_screen.dart'; 
 import 'vendor_document_screen.dart';  
 import 'notification_screen.dart'; 
-import 'vendor_package_screen.dart'; // <-- PENTING: Import Halaman Layanan
+import 'vendor_package_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -149,11 +149,8 @@ class ProfileScreen extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text('Paket Layanan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black54)),
-                              
-                              // ---> INI DIA TOMBOL KELOLA LAYANANNYA <---
                               TextButton.icon(
                                 onPressed: () {
-                                  // Navigasi ke halaman VendorPackageScreen
                                   Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorPackageScreen()));
                                 }, 
                                 icon: const Icon(Icons.edit_note, color: AppColors.primaryPink, size: 18), 
@@ -206,6 +203,10 @@ class ProfileScreen extends StatelessWidget {
                         children: [
                           const Text('Pengaturan Akun', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black54)),
                           const SizedBox(height: 8),
+                          
+                          // ---> INI DIA TOMBOL BARU UNTUK VENDOR MENGGANTI KATEGORINYA <---
+                          _buildProfileMenu(Icons.edit_outlined, 'Edit Profil Toko', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()))),
+                          
                           _buildProfileMenu(Icons.description_outlined, 'Dokumen & Legalitas', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorDocumentScreen()))),
                           _buildProfileMenu(Icons.account_balance_outlined, 'Rekening Bank', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VendorBankAccountScreen()))),
                           _buildProfileMenu(Icons.notifications_outlined, 'Notifikasi', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationScreen()))),
@@ -246,7 +247,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Tampilan Profil Lama untuk Customer
   Widget _buildCustomerProfile(BuildContext context, String nama, String email) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),

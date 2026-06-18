@@ -11,15 +11,21 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+  final User? currentUser = FirebaseAuth.instance.currentUser;
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
   
-  // Email dibiarkan statis/read-only karena mengubah email di Firebase Auth butuh verifikasi khusus
-  String _userEmail = ''; 
-  
-  bool _isLoading = true; // Untuk memuat data awal
-  bool _isSaving = false; // Untuk indikator tombol simpan
+  bool _isLoading = true;
+  bool _isSaving = false;
+  String _userRole = 'customer';
+  String _selectedCategory = 'Event Organizer';
+
+  // Daftar kategori ini sama persis dengan yang ada di aplikasi Klien
+  final List<String> _vendorCategories = [
+    'Event Organizer', 'Fotografer', 'Florist', 'Makeup Artist', 
+    'Dekorasi', 'Catering', 'Undangan', 'Musisi', 'Desainer', 
+    'Videografer', 'Transportasi', 'Kue Pernikahan', 'Souvenir'
+  ];
 
   @override
   void initState() {
@@ -27,68 +33,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _loadUserData();
   }
 
-  // Mengambil data dari Firebase saat halaman dibuka
   Future<void> _loadUserData() async {
-    User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
-      _userEmail = currentUser.email ?? '';
-      
       try {
-        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).get();
         if (doc.exists) {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          setState(() {
-            _nameController.text = data['name'] ?? '';
-            _phoneController.text = data['phone'] ?? '';
-            _locationController.text = data['location'] ?? ''; // Jika belum ada, akan kosong
-          });
+          var data = doc.data() as Map<String, dynamic>;
+          _nameController.text = data['name'] ?? '';
+          _addressController.text = data['address'] ?? '';
+          _userRole = data['role'] ?? 'customer';
+          
+          if (data.containsKey('category') && _vendorCategories.contains(data['category'])) {
+            _selectedCategory = data['category'];
+          }
         }
       } catch (e) {
-        debugPrint("Error memuat data: $e");
+        debugPrint('Error loading data: $e');
       }
     }
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
   }
 
-  // Menyimpan data baru ke Firebase
   Future<void> _saveProfile() async {
-    setState(() { _isSaving = true; });
-    
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      try {
-        await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).update({
-          'name': _nameController.text.trim(),
-          'phone': _phoneController.text.trim(),
-          'location': _locationController.text.trim(),
-        });
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profil berhasil diperbarui!'), backgroundColor: Colors.green)
-          );
-          // Kembali ke halaman profil sebelumnya
-          Navigator.pop(context);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gagal menyimpan profil.'), backgroundColor: Colors.red)
-          );
-        }
+    if (_nameController.text.trim().isEmpty) return;
+
+    setState(() => _isSaving = true);
+    try {
+      Map<String, dynamic> updateData = {
+        'name': _nameController.text.trim(),
+        'address': _addressController.text.trim(),
+      };
+
+      // Simpan kategori hanya jika dia adalah Vendor
+      if (_userRole == 'vendor') {
+        updateData['category'] = _selectedCategory;
       }
+
+      await FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).update(updateData);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil berhasil diperbarui!'), backgroundColor: Colors.green));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menyimpan profil.'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-    
-    setState(() { _isSaving = false; });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
-    _locationController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -99,109 +96,89 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.backgroundWhite,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
         title: const Text('Edit Profil', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPink))
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Center(
-                  child: Stack(
-                    children: [
-                      const CircleAvatar(radius: 50, backgroundColor: AppColors.primaryPink, child: Icon(Icons.person, size: 50, color: Colors.white)),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          backgroundColor: Colors.white, 
-                          radius: 18, 
-                          child: CircleAvatar(
-                            backgroundColor: const Color(0xFFE56B8B), 
-                            radius: 16, 
-                            child: IconButton(
-                              icon: const Icon(Icons.camera_alt, size: 14, color: Colors.white), 
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur ubah foto segera hadir!')));
-                              }, 
-                              padding: EdgeInsets.zero
-                            )
-                          )
-                        ),
-                      )
-                    ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPink))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Stack(
+                      children: [
+                        CircleAvatar(radius: 50, backgroundColor: Colors.grey.shade200, child: const Icon(Icons.person, size: 50, color: Colors.white)),
+                        Positioned(
+                          bottom: 0, right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(color: AppColors.primaryPink, shape: BoxShape.circle),
+                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                          ),
+                        )
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 30),
-                
-                _buildTextField('Nama Lengkap', _nameController),
-                
-                // Email menggunakan container karena tidak bisa diubah langsung (Read-Only)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Email', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300, // Warna abu-abu lebih gelap menandakan tidak bisa diedit
-                          borderRadius: BorderRadius.circular(8)
-                        ),
-                        child: Text(_userEmail, style: const TextStyle(color: Colors.black54)),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                _buildTextField('No. Hp', _phoneController),
-                _buildTextField('Lokasi / Kota', _locationController),
-                
-                const SizedBox(height: 40),
-                
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE56B8B),
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: _isSaving ? null : _saveProfile,
-                  child: _isSaving 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Simpan Perubahan', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          ),
-    );
-  }
+                  const SizedBox(height: 30),
 
-  Widget _buildTextField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  const Text('Nama Lengkap / Nama Toko', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  TextField(controller: _nameController, decoration: InputDecoration(filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none))),
+                  const SizedBox(height: 20),
+
+                  const Text('Alamat', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  TextField(controller: _addressController, maxLines: 2, decoration: InputDecoration(hintText: 'Masukkan alamat lengkap...', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none))),
+                  const SizedBox(height: 20),
+
+                  // ---> TAMPILKAN PILIHAN KATEGORI KHUSUS VENDOR <---
+                  if (_userRole == 'vendor') ...[
+                    const Text('Kategori Vendor', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedCategory,
+                          items: _vendorCategories.map((String category) {
+                            return DropdownMenuItem<String>(
+                              value: category,
+                              child: Text(category),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                _selectedCategory = newValue;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('* Kategori ini akan menentukan di mana toko Anda muncul pada aplikasi klien.', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                    const SizedBox(height: 20),
+                  ],
+
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity, height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                      onPressed: _isSaving ? null : _saveProfile,
+                      child: _isSaving
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Simpan Perubahan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
     );
   }
 }
